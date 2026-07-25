@@ -1,17 +1,126 @@
-# Generated outputs
+# =============================================================================
+# mermaid-export .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Generated output files (produced by the tool itself)
+# -----------------------------------------------------------------------------
 *.pdf
 *.png
 *.svg
 *.jpg
 *.jpeg
 
-# Temporary files
+# Temporary / cache files generated during conversion
 *.tmp
+*.temp
+.tmp.*
+
+# -----------------------------------------------------------------------------
+# Editor & IDE
+# -----------------------------------------------------------------------------
+# JetBrains (IntelliJ, PyCharm, WebStorm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+out/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+.history/
+
+# Vim / Neovim
 *.swp
 *.swo
 *~
-.DS_Store
+.netrwhist
+[._]*.un~
 
-# Test artifacts
+# Emacs
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Atom
+.atom/
+
+# Nano
+*.nano_save
+
+# -----------------------------------------------------------------------------
+# Operating System Files
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.nfs*
+
+# -----------------------------------------------------------------------------
+# Shell / Bash Specific
+# -----------------------------------------------------------------------------
+# Backup files created by some editors or scripts
+*.bak
+*.backup
+*.orig
+*.rej
+
+# Shell script test artifacts
 test-output/
-.idea/
+test-results/
+*.log
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+# Local Docker artifacts (if any)
+.dockerignore
+
+# -----------------------------------------------------------------------------
+# General
+# -----------------------------------------------------------------------------
+# Lock files (unless you explicitly want them)
+*.lock
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Tags / ctags
+tags
+TAGS
+.ctags
+
+# Core dumps
+core
+core.*
+vgcore.*
+
+# Coverage reports
+coverage/
+*.gcov
+
+# -----------------------------------------------------------------------------
+# Project-specific (keep at bottom)
+# -----------------------------------------------------------------------------
