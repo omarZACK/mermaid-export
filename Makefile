@@ -4,7 +4,7 @@ PREFIX     ?= /usr/local
 BINDIR     ?= $(PREFIX)/bin
 MANDIR     ?= $(PREFIX)/share/man/man1
 SCRIPT      = mermaid-export
-MANPAGE     = man/mermaid-export.1
+MANPAGE     = mermaid-export.1
 
 .PHONY: all install uninstall test
 
@@ -16,7 +16,7 @@ install:
 	@echo "Installing $(SCRIPT) to $(BINDIR) ..."
 	install -Dm755 $(SCRIPT) $(BINDIR)/$(SCRIPT)
 	@echo "Installing man page to $(MANDIR) ..."
-	install -Dm644 $(MANPAGE) $(MANDIR)/$(MANPAGE)
+	install -Dm644 man/$(MANPAGE) $(MANDIR)/$(MANPAGE)
 	@echo "Done. Run 'mermaid-export --help' to get started."
 
 uninstall:
