@@ -1,0 +1,17 @@
+# Generated outputs
+*.pdf
+*.png
+*.svg
+*.jpg
+*.jpeg
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test artifacts
+test-output/
+.idea/

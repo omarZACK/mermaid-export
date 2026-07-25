@@ -1,0 +1,706 @@
+#!/usr/bin/env bash
+#
+# mermaid-export — Export Mermaid diagrams to PDF, PNG, SVG, and JPG
+# https://github.com/<your-username>/mermaid-export
+#
+# SPDX-License-Identifier: MIT
+
+set -Eeuo pipefail
+
+readonly IMAGE="minlag/mermaid-cli"
+readonly VERSION="1.0.0"
+WIDTH=6000
+
+INPUT=""
+CLI_INPUT=false
+
+COMMON_NAME=""
+PDF=""
+PNG=""
+SVG=""
+JPG=""
+
+# Exclusion flags
+NO_PDF=false
+NO_PNG=false
+NO_SVG=false
+NO_JPG=false
+
+# Only-one-format flags
+ONLY_PDF=false
+ONLY_PNG=false
+ONLY_SVG=false
+ONLY_JPG=false
+
+# ------------------------------------------------------------
+# Embedded manual
+# ------------------------------------------------------------
+
+show_manual() {
+    local PAGER="${PAGER:-less}"
+    command -v "$PAGER" >/dev/null || PAGER="cat"
+
+    "$PAGER" <<'MANPAGE'
+MERMAID-EXPORT(1)                                          User Commands                                         MERMAID-EXPORT(1)
+
+NAME
+       mermaid-export - export Mermaid diagrams to multiple formats
+
+SYNOPSIS
+
+       mermaid-export [input.mmd] [options]
+
+DESCRIPTION
+       mermaid-export is a Bash wrapper around the minlag/mermaid-cli Docker
+       image. It generates publication-ready exports of Mermaid diagram files
+       in PDF, PNG, SVG, and JPG formats.
+
+       If no input file is provided, the script interactively lists all .mmd
+       files in the current directory and prompts for selection.
+
+       By default, all four formats are generated. Use exclusion or --only-*
+       flags to control output.
+
+       run (default)
+           When called with an input file or via interactive selection, the
+           script generates the requested output formats using Docker.
+
+       list
+           List all available .mmd files in the current directory without
+           generating anything.
+
+OPTIONS
+       -o, --output NAME
+           Use a single base name for all output files. Extensions are
+           appended automatically.
+
+       --pdf NAME
+           Set the PDF output filename (without extension).
+
+       --png NAME
+           Set the PNG output filename (without extension).
+
+       --svg NAME
+           Set the SVG output filename (without extension).
+
+       --jpg NAME
+           Set the JPG output filename (without extension).
+
+       --no-pdf
+           Exclude PDF from the output.
+
+       --no-png
+           Exclude PNG from the output.
+
+       --no-svg
+           Exclude SVG from the output.
+
+       --no-jpg
+           Exclude JPG from the output.
+
+       --only-pdf
+           Generate only the PDF file.
+
+       --only-png
+           Generate only the PNG file.
+
+       --only-svg
+           Generate only the SVG file.
+
+       --only-jpg
+           Generate only the JPG file. A temporary PNG is created internally
+           and removed automatically.
+
+       -w, --width WIDTH
+           Set the PNG rasterisation width in pixels. Default is 6000.
+
+       -h, --help
+           Show a short usage summary and exit.
+
+       --man
+           Display this manual page and exit.
+
+       --version
+           Show version information and exit.
+
+OUTPUT NAMING
+       When run without explicit output names, the script behaves as follows:
+
+       o If an input file is given on the command line, the base name of that
+         file is used for all outputs.
+
+       o If no input file is given (interactive mode), the user is prompted
+         to choose between:
+
+         1) Using the input file base name.
+         2) Using one common name for all outputs.
+         3) Specifying a unique name per format.
+
+EXAMPLES
+       mermaid-export
+           List available .mmd files and run interactively.
+
+       mermaid-export ERD.mmd
+           Generate ERD.pdf, ERD.png, ERD.svg, and ERD.jpg.
+
+       mermaid-export ERD.mmd -o Diagram
+           Generate Diagram.pdf, Diagram.png, Diagram.svg, and Diagram.jpg.
+
+       mermaid-export ERD.mmd --only-png
+           Generate only ERD.png.
+
+       mermaid-export ERD.mmd -o Report --no-jpg
+           Generate Report.pdf, Report.png, and Report.svg.
+
+       mermaid-export ERD.mmd --no-pdf --no-svg
+           Generate only ERD.png and ERD.jpg.
+
+       mermaid-export ERD.mmd --only-jpg -o Thumbnail
+           Generate only Thumbnail.jpg.
+
+DEPENDENCIES
+       docker (docker(1))
+           Required to run the minlag/mermaid-cli container.
+
+       convert (convert(1))
+           Provided by ImageMagick. Required for JPG generation.
+
+FILES
+       /usr/local/bin/mermaid-export
+           The script itself (typical install location).
+
+       /usr/local/share/man/man1/mermaid-export.1
+           This man page.
+
+ENVIRONMENT
+       PWD
+           The script mounts the current working directory into the Docker
+           container as /data. All paths are resolved relative to $PWD.
+
+DIAGNOSTICS
+       mermaid-export returns zero on normal operation, decimal 1 on error.
+
+BUGS
+       Report bugs to the script maintainer or open an issue on the project
+       repository.
+
+AUTHOR
+       Written by the mermaid-export user.
+
+SEE ALSO
+       docker(1), convert(1), mmdc(1)
+
+mermaid-export 1.0.0                                    2026-07-26                                        MERMAID-EXPORT(1)
+MANPAGE
+}
+
+# ------------------------------------------------------------
+# Help
+# ------------------------------------------------------------
+
+usage() {
+cat <<EOF
+Usage:
+  mermaid-export [input.mmd] [options]
+
+Options:
+  -o, --output NAME     Base name for all outputs
+      --pdf NAME        PDF filename
+      --png NAME        PNG filename
+      --svg NAME        SVG filename
+      --jpg NAME        JPG filename
+      --no-pdf          Exclude PDF output
+      --no-png          Exclude PNG output
+      --no-svg          Exclude SVG output
+      --no-jpg          Exclude JPG output
+      --only-pdf        Generate only PDF
+      --only-png        Generate only PNG
+      --only-svg        Generate only SVG
+      --only-jpg        Generate only JPG
+  -w, --width WIDTH     PNG width (default: 6000)
+  -h, --help            Show help
+      --man             Show manual
+      --version         Show version
+
+Examples:
+
+  mermaid-export
+
+  mermaid-export ERD.mmd
+
+  mermaid-export ERD.mmd -o Diagram
+
+  mermaid-export ERD.mmd \
+      --pdf Report \
+      --png Figure \
+      --svg Vector \
+      --jpg Thumbnail
+
+  mermaid-export ERD.mmd -o Diagram --no-jpg
+
+  mermaid-export ERD.mmd --no-pdf --no-svg
+
+  mermaid-export ERD.mmd --only-png
+
+EOF
+}
+
+# ------------------------------------------------------------
+# Parse arguments
+# ------------------------------------------------------------
+
+while [[ $# -gt 0 ]]; do
+
+    case "$1" in
+
+        -o|--output)
+            [[ $# -ge 2 ]] || {
+                echo "Missing value for $1"
+                exit 1
+            }
+
+            COMMON_NAME="$2"
+            shift 2
+            ;;
+
+
+        --pdf)
+            [[ $# -ge 2 ]] || {
+                echo "Missing value for $1"
+                exit 1
+            }
+
+            PDF="$2"
+            shift 2
+            ;;
+
+
+        --png)
+            [[ $# -ge 2 ]] || {
+                echo "Missing value for $1"
+                exit 1
+            }
+
+            PNG="$2"
+            shift 2
+            ;;
+
+
+        --svg)
+            [[ $# -ge 2 ]] || {
+                echo "Missing value for $1"
+                exit 1
+            }
+
+            SVG="$2"
+            shift 2
+            ;;
+
+
+        --jpg)
+            [[ $# -ge 2 ]] || {
+                echo "Missing value for $1"
+                exit 1
+            }
+
+            JPG="$2"
+            shift 2
+            ;;
+
+
+        --no-pdf)
+            NO_PDF=true
+            shift
+            ;;
+
+
+        --no-png)
+            NO_PNG=true
+            shift
+            ;;
+
+
+        --no-svg)
+            NO_SVG=true
+            shift
+            ;;
+
+
+        --no-jpg)
+            NO_JPG=true
+            shift
+            ;;
+
+
+        --only-pdf)
+            ONLY_PDF=true
+            shift
+            ;;
+
+
+        --only-png)
+            ONLY_PNG=true
+            shift
+            ;;
+
+
+        --only-svg)
+            ONLY_SVG=true
+            shift
+            ;;
+
+
+        --only-jpg)
+            ONLY_JPG=true
+            shift
+            ;;
+
+
+        -w|--width)
+            [[ $# -ge 2 ]] || {
+                echo "Missing value for $1"
+                exit 1
+            }
+
+            WIDTH="$2"
+            shift 2
+            ;;
+
+
+        -h|--help)
+            usage
+            exit 0
+            ;;
+
+
+        --man)
+            show_manual
+            exit 0
+            ;;
+
+
+        --version)
+            echo "mermaid-export $VERSION"
+            exit 0
+            ;;
+
+
+        -*)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+
+
+        *)
+            if [[ -z "$INPUT" ]]; then
+                INPUT="$1"
+                CLI_INPUT=true
+            else
+                echo "Unexpected argument: $1"
+                exit 1
+            fi
+
+            shift
+            ;;
+
+    esac
+
+done
+
+
+# ------------------------------------------------------------
+# Apply --only-* flags (override --no-* exclusions)
+# ------------------------------------------------------------
+
+if $ONLY_PDF; then
+    NO_PDF=false
+    NO_PNG=true
+    NO_SVG=true
+    NO_JPG=true
+
+elif $ONLY_PNG; then
+    NO_PDF=true
+    NO_PNG=false
+    NO_SVG=true
+    NO_JPG=true
+
+elif $ONLY_SVG; then
+    NO_PDF=true
+    NO_PNG=true
+    NO_SVG=false
+    NO_JPG=true
+
+elif $ONLY_JPG; then
+    NO_PDF=true
+    NO_PNG=true
+    NO_SVG=true
+    NO_JPG=false
+
+fi
+
+
+# ------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------
+
+command -v docker >/dev/null || {
+    echo "Error: Docker is not installed."
+    exit 1
+}
+
+
+command -v convert >/dev/null || {
+    echo "Error: ImageMagick is not installed."
+    exit 1
+}
+
+
+# ------------------------------------------------------------
+# Docker image
+# ------------------------------------------------------------
+
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+
+    echo "Docker image not found."
+    echo "Pulling $IMAGE..."
+
+    docker pull "$IMAGE"
+
+fi
+
+
+# ------------------------------------------------------------
+# Select input interactively
+# ------------------------------------------------------------
+
+if [[ -z "$INPUT" ]]; then
+
+    shopt -s nullglob
+
+    FILES=( *.mmd )
+
+    if (( ${#FILES[@]} == 0 )); then
+        echo "No .mmd files found."
+        exit 1
+    fi
+
+
+    echo
+    echo "Available Mermaid files:"
+
+    select FILE in "${FILES[@]}"; do
+
+        if [[ -n "$FILE" ]]; then
+            INPUT="$FILE"
+            break
+        fi
+
+        echo "Invalid selection."
+
+    done
+
+fi
+
+
+[[ -f "$INPUT" ]] || {
+
+    echo "Input file not found: $INPUT"
+    exit 1
+
+}
+
+
+BASE="${INPUT%.mmd}"
+
+
+# ------------------------------------------------------------
+# Output naming
+# ------------------------------------------------------------
+
+if [[ -n "$COMMON_NAME" ]]; then
+
+    PDF_NAME="${COMMON_NAME}.pdf"
+    PNG_NAME="${COMMON_NAME}.png"
+    SVG_NAME="${COMMON_NAME}.svg"
+    JPG_NAME="${COMMON_NAME}.jpg"
+
+
+elif [[ -n "$PDF" || -n "$PNG" || -n "$SVG" || -n "$JPG" ]]; then
+
+    PDF_NAME="${PDF:-$BASE}.pdf"
+    PNG_NAME="${PNG:-$BASE}.png"
+    SVG_NAME="${SVG:-$BASE}.svg"
+    JPG_NAME="${JPG:-$BASE}.jpg"
+
+
+elif $CLI_INPUT; then
+
+    # Input was supplied.
+    # Automatically use input name.
+
+    PDF_NAME="${BASE}.pdf"
+    PNG_NAME="${BASE}.png"
+    SVG_NAME="${BASE}.svg"
+    JPG_NAME="${BASE}.jpg"
+
+
+else
+
+    echo
+    echo "Output naming:"
+    echo "1) Use input filename ($BASE)"
+    echo "2) Use one name for all outputs"
+    echo "3) Specify each output filename"
+    echo
+
+    read -rp "Choice [1-3]: " CHOICE
+
+
+    case "$CHOICE" in
+
+        2)
+
+            read -rp "Base filename: " NAME
+
+            PDF_NAME="${NAME}.pdf"
+            PNG_NAME="${NAME}.png"
+            SVG_NAME="${NAME}.svg"
+            JPG_NAME="${NAME}.jpg"
+
+            ;;
+
+
+        3)
+
+            read -rp "PDF filename: " PDF
+            read -rp "PNG filename: " PNG
+            read -rp "SVG filename: " SVG
+            read -rp "JPG filename: " JPG
+
+            PDF_NAME="${PDF}.pdf"
+            PNG_NAME="${PNG}.png"
+            SVG_NAME="${SVG}.svg"
+            JPG_NAME="${JPG}.jpg"
+
+            ;;
+
+
+        *)
+
+            PDF_NAME="${BASE}.pdf"
+            PNG_NAME="${BASE}.png"
+            SVG_NAME="${BASE}.svg"
+            JPG_NAME="${BASE}.jpg"
+
+            ;;
+
+    esac
+
+fi
+
+
+# ------------------------------------------------------------
+# Mermaid runner
+# ------------------------------------------------------------
+
+run_mermaid() {
+
+    docker run --rm \
+        -u "$(id -u):$(id -g)" \
+        -v "$PWD:/data" \
+        "$IMAGE" \
+        "$@" \
+        >/dev/null
+
+}
+
+
+# ------------------------------------------------------------
+# Validate that at least one format remains
+# ------------------------------------------------------------
+
+if $NO_PDF && $NO_PNG && $NO_SVG && $NO_JPG; then
+    echo "Error: All output formats are excluded. Nothing to generate."
+    echo "Remove at least one --no-* flag or use a single --only-* flag."
+    exit 1
+fi
+
+
+# ------------------------------------------------------------
+# Determine if JPG needs a temporary PNG source
+# ------------------------------------------------------------
+
+NEED_TMP_PNG=false
+if ! $NO_JPG && $NO_PNG; then
+    NEED_TMP_PNG=true
+fi
+
+
+# ------------------------------------------------------------
+# Generate files
+# ------------------------------------------------------------
+
+echo
+
+if ! $NO_PDF; then
+    echo "Generating PDF..."
+    run_mermaid \
+        -i "/data/$INPUT" \
+        -o "/data/$PDF_NAME" \
+        --pdfFit
+fi
+
+if ! $NO_PNG; then
+    echo "Generating PNG..."
+    run_mermaid \
+        -i "/data/$INPUT" \
+        -o "/data/$PNG_NAME" \
+        -w "$WIDTH"
+fi
+
+if ! $NO_SVG; then
+    echo "Generating SVG..."
+    run_mermaid \
+        -i "/data/$INPUT" \
+        -o "/data/$SVG_NAME"
+fi
+
+if ! $NO_JPG; then
+    echo "Generating JPG..."
+
+    if $NEED_TMP_PNG; then
+        TMP_PNG=".tmp.mermaid-export.$$.$RANDOM.png"
+        run_mermaid \
+            -i "/data/$INPUT" \
+            -o "/data/$TMP_PNG" \
+            -w "$WIDTH"
+
+        convert "$TMP_PNG" \
+            -sampling-factor 4:4:4 \
+            -quality 100 \
+            -strip \
+            "$JPG_NAME"
+
+        rm -f "$TMP_PNG"
+    else
+        convert "$PNG_NAME" \
+            -sampling-factor 4:4:4 \
+            -quality 100 \
+            -strip \
+            "$JPG_NAME"
+    fi
+fi
+
+
+echo
+echo "========================================"
+echo "Export completed successfully!"
+echo "========================================"
+echo "Input : $INPUT"
+echo
+echo "Generated files:"
+
+$NO_PDF || echo "  PDF : $PDF_NAME"
+$NO_PNG || echo "  PNG : $PNG_NAME"
+$NO_SVG || echo "  SVG : $SVG_NAME"
+$NO_JPG || echo "  JPG : $JPG_NAME"

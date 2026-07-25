@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint script
+        run: shellcheck mermaid-export
+
+  install-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: sudo make install
+      - name: Verify binary exists
+        run: command -v mermaid-export
+      - name: Verify man page exists
+        run: test -f /usr/local/share/man/man1/mermaid-export.1
+      - name: Test help flag
+        run: mermaid-export --help
+      - name: Test version flag
+        run: mermaid-export --version

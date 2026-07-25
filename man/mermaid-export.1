@@ -1,0 +1,147 @@
+.\" Man page for mermaid-export
+.TH MERMAID-EXPORT 1 "2026-07-26" "1.0.0" "User Commands"
+.SH NAME
+mermaid-export \- export Mermaid diagrams to multiple formats
+.SH SYNOPSIS
+
+       mermaid-export [input.mmd] [options]
+
+.SH DESCRIPTION
+       mermaid-export is a Bash wrapper around the minlag/mermaid-cli Docker
+       image. It generates publication-ready exports of Mermaid diagram files
+       in PDF, PNG, SVG, and JPG formats.
+
+       If no input file is provided, the script interactively lists all .mmd
+       files in the current directory and prompts for selection.
+
+       By default, all four formats are generated. Use exclusion or --only-*
+       flags to control output.
+
+       run (default)
+           When called with an input file or via interactive selection, the
+           script generates the requested output formats using Docker.
+
+       list
+           List all available .mmd files in the current directory without
+           generating anything.
+
+.SH OPTIONS
+       -o, --output NAME
+           Use a single base name for all output files. Extensions are
+           appended automatically.
+
+       --pdf NAME
+           Set the PDF output filename (without extension).
+
+       --png NAME
+           Set the PNG output filename (without extension).
+
+       --svg NAME
+           Set the SVG output filename (without extension).
+
+       --jpg NAME
+           Set the JPG output filename (without extension).
+
+       --no-pdf
+           Exclude PDF from the output.
+
+       --no-png
+           Exclude PNG from the output.
+
+       --no-svg
+           Exclude SVG from the output.
+
+       --no-jpg
+           Exclude JPG from the output.
+
+       --only-pdf
+           Generate only the PDF file.
+
+       --only-png
+           Generate only the PNG file.
+
+       --only-svg
+           Generate only the SVG file.
+
+       --only-jpg
+           Generate only the JPG file. A temporary PNG is created internally
+           and removed automatically.
+
+       -w, --width WIDTH
+           Set the PNG rasterisation width in pixels. Default is 6000.
+
+       -h, --help
+           Show a short usage summary and exit.
+
+       --man
+           Display this manual page and exit.
+
+       --version
+           Show version information and exit.
+
+.SH OUTPUT NAMING
+       When run without explicit output names, the script behaves as follows:
+
+       o If an input file is given on the command line, the base name of that
+         file is used for all outputs.
+
+       o If no input file is given (interactive mode), the user is prompted
+         to choose between:
+
+         1) Using the input file base name.
+         2) Using one common name for all outputs.
+         3) Specifying a unique name per format.
+
+.SH EXAMPLES
+       mermaid-export
+           List available .mmd files and run interactively.
+
+       mermaid-export ERD.mmd
+           Generate ERD.pdf, ERD.png, ERD.svg, and ERD.jpg.
+
+       mermaid-export ERD.mmd -o Diagram
+           Generate Diagram.pdf, Diagram.png, Diagram.svg, and Diagram.jpg.
+
+       mermaid-export ERD.mmd --only-png
+           Generate only ERD.png.
+
+       mermaid-export ERD.mmd -o Report --no-jpg
+           Generate Report.pdf, Report.png, and Report.svg.
+
+       mermaid-export ERD.mmd --no-pdf --no-svg
+           Generate only ERD.png and ERD.jpg.
+
+       mermaid-export ERD.mmd --only-jpg -o Thumbnail
+           Generate only Thumbnail.jpg.
+
+.SH DEPENDENCIES
+       docker (docker(1))
+           Required to run the minlag/mermaid-cli container.
+
+       convert (convert(1))
+           Provided by ImageMagick. Required for JPG generation.
+
+.SH FILES
+       /usr/local/bin/mermaid-export
+           The script itself (typical install location).
+
+       /usr/local/share/man/man1/mermaid-export.1
+           This man page.
+
+.SH ENVIRONMENT
+       PWD
+           The script mounts the current working directory into the Docker
+           container as /data. All paths are resolved relative to $PWD.
+
+.SH DIAGNOSTICS
+       mermaid-export returns zero on normal operation, decimal 1 on error.
+
+.SH BUGS
+       Report bugs to the script maintainer or open an issue on the project
+       repository.
+
+.SH AUTHOR
+       Written by the mermaid-export user.
+
+.SH SEE ALSO
+       docker(1), convert(1), mmdc(1)
